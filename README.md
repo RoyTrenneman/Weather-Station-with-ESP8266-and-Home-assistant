@@ -69,7 +69,7 @@ More informations regarding implementation with Hass [here](https://home-assista
 
 Danger symbol is provided by [wundergroud](https://www.wunderground.com/EU/FR/064.html)
 
-More informations regarding implementation with Hass [here] (https://home-assistant.io/components/sensor.yr/)
+More informations regarding implementation with Hass [here](https://home-assistant.io/components/sensor.yr/)
 
 
 ![Alt text](./station.jpg)
