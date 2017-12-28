@@ -65,11 +65,11 @@ Here my configuration.yaml for the MQTT part:
 
 Weather symbols are provided by [yr](http://om.yr.no/symbol/)
 
-More informations regarding implementation with Hass [here](https://home-assistant.io/components/sensor.wunderground/) 
+More informations regarding implementation with Hass [here](https://home-assistant.io/components/sensor.yr/)
 
 Danger symbol is provided by [wundergroud](https://www.wunderground.com/EU/FR/064.html)
 
-More informations regarding implementation with Hass [here](https://home-assistant.io/components/sensor.yr/)
+More informations regarding implementation with Hass [here](https://home-assistant.io/components/sensor.wunderground/) 
 
 
 ![Alt text](./station.jpg)
