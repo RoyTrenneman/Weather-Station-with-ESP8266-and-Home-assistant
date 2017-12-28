@@ -1,4 +1,4 @@
-# Weather-Station-with-ESP8266-and-Homesassistant
+# Weather-Station-with-ESP8266-and-Home-assistant
 Weather Station wilt ESP8266-12E and Oled Display SSD1306 
 
 **Framework used: Arduino**
