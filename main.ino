@@ -376,7 +376,7 @@ void display_msg(char* msg1, char* msg2, char* msg3, char* msg4, char*msg5) {
         display.drawBitmap(50, 35 ,arrow, 32, 32 , 1);
     }
     String msg_danger = String(msg5);
-    if (msg_danger == "1" ){
+    if (msg_danger != "0" ){
         display.drawBitmap(90, 35 ,danger , 32, 32 , 1);
     }
 
