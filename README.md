@@ -6,7 +6,7 @@ Weather Station with ESP8266-12E and Oled Display SSD1306
 **IDE used**:
 [PlatformIO Core](http://platformio.org/get-started/cli)
 
-**MQTT publisher: Home Assistant Hass)**
+**MQTT publisher: Home Assistant Hass**
 [HomeAssistant](https://home-assistant.io/)
 
 HomeAssistant publishes data through MQTT on topic "sensor/#"
