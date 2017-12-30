@@ -261,6 +261,7 @@ void setup() {
     display.display();
     //display.startscrollright(0x00, 0x0F);
 
+    WiFi.mode(WIFI_STA);
     WiFi.begin(ssid, password);
 
     while (WiFi.status() != WL_CONNECTED) {
