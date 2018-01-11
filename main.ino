@@ -42,7 +42,7 @@ unsigned long now;
 bool monitor = true ;
 float temp ;
 float humi ;
-float float_actual_pressure;
+float float_current_pressure;
 float float_old_pressure ;
 int t;
 bool first_mesure = true;
@@ -451,9 +451,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
         //tendance
         String msgString = String(message_buff_pressure);
-        float_actual_pressure = msgString.toFloat();
+        float_current_pressure = msgString.toFloat();
         if (first_mesure){
-            float_old_pressure = float_actual_pressure ;
+            float_old_pressure = float_current_pressure ;
             first_mesure = false;
         }
         trend();
@@ -510,18 +510,18 @@ void counter() {
 void trend (){
     t++ ;
     if (t > 5) {
-        float dif = float_old_pressure - float_actual_pressure ;
+        float dif = float_old_pressure - float_current_pressure ;
         if ( (dif > 0.5 ) || (dif < -0.5) ) {
-            if (float_old_pressure > float_actual_pressure) {
+            if (float_old_pressure > float_current_pressure) {
                 image_trend = "down" ;
             } else {
                 image_trend = "up" ;
             }
-            float_old_pressure = float_actual_pressure ;
+            float_old_pressure = float_current_pressure ;
             t = -5 ;
         } else {
             image_trend = "none" ;
-            float_old_pressure = float_actual_pressure ;
+            float_old_pressure = float_current_pressure ;
             t = 0 ;
         }
     }
