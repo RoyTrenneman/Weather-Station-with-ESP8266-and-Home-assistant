@@ -11,6 +11,7 @@
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
+Adafruit_SSD1306 display2(OLED_RESET);
 
 #define NUMFLAKES 10
 #define XPOS 0
