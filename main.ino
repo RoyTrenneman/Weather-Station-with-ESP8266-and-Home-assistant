@@ -156,7 +156,6 @@ static const unsigned char PROGMEM unknown [] =
 static const unsigned char PROGMEM partysunnyrainy [] =
 {
     // 'HA= 5 || 40 || 41'
-    // 'test'
    0x07, 0x00, 0x00, 0x03, 0x80, 0x00, 0x07, 0x80, 0x00, 0x07, 0x80, 0x00, 0x03, 0xc0, 0x00, 0x07,
    0x00, 0x00, 0x01, 0xc0, 0x7c, 0x06, 0x00, 0x00, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0x07,
    0xff, 0xc0, 0x00, 0x00, 0x00, 0x0f, 0x83, 0xe0, 0x00, 0x00, 0x00, 0x1e, 0x00, 0xf0, 0x00, 0x00,
@@ -664,22 +663,17 @@ void display_msg(char* msg1, char* msg2, char* msg3, char* msg4, char*msg5) {
     delay(800);
     String msgString_temp = String(msg2);
     display.setCursor(0,20);
-    // display.setTextSize(1);
     display.setTextColor(WHITE);
     display.print("Ext: ");
     display.print(msgString_temp);
-    //  display.println(" Degres");
     //Display msg3
     delay(800);
     String msgString_temp_int = String(msg3);
     display.setCursor(0,40);
-    // display.setTextColor(WHITE);
     display.print("Int: ");
     display.print(msgString_temp_int);
-    //display.println(" Degres");
     delay(800);
     display.display();
-    // delay(8000);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
