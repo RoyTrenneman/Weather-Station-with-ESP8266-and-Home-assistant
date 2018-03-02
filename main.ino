@@ -259,12 +259,21 @@ void setup() {
     //Starting Display
     Wire.begin(2,14);
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // initialize with the I2C addr 0x3C (for the 128x32)
+    display2.begin(SSD1306_SWITCHCAPVCC, 0x3D); // initialize with the I2C addr 0x3D (for the 128x32)
     display.display();
+    display2.display();
+
     delay(1000);
     display.clearDisplay();
+    display2.clearDisplay();
     display.setCursor(0,0);
-    display.setTextSize(1.5);
+    display2.setCursor(0,0);
+    display.setTextSize(1);
+    display2.setTextSize(1);
     display.setTextColor(WHITE);
+    display2.setTextColor(WHITE);
+   // display.setFont(&Org_01);
+ //   display2.setFont(&Org_01);
     delay(500);
     display.println("Attempting ");
     display.println("wifi connection...");
@@ -283,7 +292,7 @@ void setup() {
 
 
     display.clearDisplay();
-    display.setCursor(0,0);
+    //display.setCursor(0,0);
     delay(500);
     display.println("Wifi connected on");
     display.println(String (ssid));
@@ -352,50 +361,58 @@ void reconnect() {
 void display_msg(char* msg1, char* msg2, char* msg3, char* msg4, char*msg5) {
     yield();
     delay(800);
-    //Display image
-    display.clearDisplay();
-
+    //Display2 image
+    display2.clearDisplay();
     String msg_icone = String(msg4);
-    if (msg_icone == "4" ){
-        display.drawBitmap(0, 22 ,cloudy , 48, 48 , 1);
+
+    if (msg_icone == "4" || (msg_icone == "15")) {
+        display2.drawBitmap(-5, -14 ,cloudy , 96, 96 , 1);
 
     } else if (msg_icone == "1") {
-        display.drawBitmap(0, 22 ,sunny , 48, 48 , 1);
+        display2.drawBitmap(-5, -13 ,sunny , 96, 96 , 1);
 
-    } else if ((msg_icone == "49") || (msg_icone == "50") || (msg_icone == "13")) {
-        display.drawBitmap(0, 30 ,snow , 32, 32 , 1);
+    } else if ((msg_icone == "49") || (msg_icone == "50") || (msg_icone == "13") || (msg_icone == "12")) {
+        display2.drawBitmap(15, 30 ,snow , 32, 32 , 1);
 
     } else if ((msg_icone =="3") || (msg_icone =="2"))  {
-        display.drawBitmap(-5, 22 ,partysunny , 48, 48 , 1);
+        display2.drawBitmap(-5, -15 ,partysunny , 96, 96 , 1);
 
     } else if ((msg_icone =="9") || (msg_icone == "46") || (msg_icone =="10")) {
-        display.drawBitmap(0, 22 ,rainy , 48, 48 , 1);
+        display2.drawBitmap(-5, -8 ,rainy , 96, 96 , 1);
 
     } else if ((msg_icone =="5") || (msg_icone == "40") || (msg_icone =="41")) {
-        display.drawBitmap(0, 30 ,partysunnyrainy , 32, 32 , 1);
+        display2.drawBitmap(5, 10 ,partysunnyrainy , 48, 48 , 1);
 
     } else {
-        display.drawBitmap(0, 30 ,unknown , 32, 32 , 1);
+        display2.drawBitmap(0, 30 ,unknown , 32, 32 , 1);
     };
+
     if (monitor) {
-        display.drawBitmap(100, 0 ,wifi_icone, 24, 24, 1);
+        display2.drawBitmap(100, 0 ,wifi_icone, 24, 24, 1);
+    }
+    String msg_danger = String(msg5);
+    if (msg_danger != "0" ){
+        display2.drawBitmap(90, 35 ,danger , 32, 32 , 1);
     }
     if (image_trend == "up"){
-        display.drawBitmap(50, 35 ,arrowup, 32, 32 , 1);
+        display.drawBitmap(-12, -4 ,arrowup, 32, 32 , 1);
     }
     if (image_trend == "down"){
-        display.drawBitmap(50, 35 ,arrowdown, 32, 32 , 1);
+        display.drawBitmap(-12, -4 ,arrowdown, 32, 32 , 1);
     }
     if (image_trend == "none"){
-        display.drawBitmap(50, 35 ,arrow, 32, 32 , 1);
+        display.drawBitmap(-12, -4 ,arrow, 32, 32 , 1);
     }
     String msg_danger = String(msg5);
     if (msg_danger != "0" ){
         display.drawBitmap(90, 35 ,danger , 32, 32 , 1);
     }
+    display2.display();
 
+    //Display1
     delay(800);
-
+    display.clearDisplay();
+    display.setTextSize(2);
     //display msg1
     String msgString_pressure = String(msg1);
     display.setCursor(0,0);
@@ -405,21 +422,20 @@ void display_msg(char* msg1, char* msg2, char* msg3, char* msg4, char*msg5) {
     //Display msg2
     delay(800);
     String msgString_temp = String(msg2);
-    display.setCursor(0,10);
+    display.setCursor(0,20);
     // display.setTextSize(1);
     display.setTextColor(WHITE);
     display.print("Ext: ");
     display.print(msgString_temp);
-    display.println(" Degres");
+    //  display.println(" Degres");
     //Display msg3
     delay(800);
     String msgString_temp_int = String(msg3);
-    display.setCursor(0,20);
-    display.setTextSize(1);
+    display.setCursor(0,40);
     // display.setTextColor(WHITE);
     display.print("Int: ");
     display.print(msgString_temp_int);
-    display.println(" Degres");
+    //display.println(" Degres");
     delay(800);
     display.display();
     // delay(8000);
