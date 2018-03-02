@@ -23,6 +23,8 @@ Adafruit_SSD1306 display2(OLED_RESET);
 //#define LOGO16_GLCD_WIDTH  16
 
 //SSD1306_128_64
+int lux = 1000 ;
+bool high_lux = false ;
 
 bool debug = false;
 const char* ssid = "***************";
@@ -36,10 +38,14 @@ char message_buff_temp_int[100];
 char message_buff_pressure[100];
 char message_buff_icone[100];
 char message_buff_danger[10] ;
+char message_buff_lux[10] ;
 
 unsigned long time;
 unsigned long next_time;
 unsigned long now;
+unsigned long time_PIR;
+unsigned long now_PIR;
+
 bool monitor = true ;
 float temp ;
 float humi ;
@@ -482,7 +488,8 @@ PubSubClient client(espClient);
 void setup() {
 
     Serial.begin(115200);
-
+    pinMode(5, INPUT);
+    pinMode(13, INPUT_PULLUP);
     //Starting Display
     Wire.begin(2,14);
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // initialize with the I2C addr 0x3C (for the 128x32)
@@ -630,9 +637,15 @@ void display_msg(char* msg1, char* msg2, char* msg3, char* msg4, char*msg5) {
     if (image_trend == "none"){
         display.drawBitmap(-12, -4 ,arrow, 32, 32 , 1);
     }
-    String msg_danger = String(msg5);
-    if (msg_danger != "0" ){
-        display.drawBitmap(90, 35 ,danger , 32, 32 , 1);
+    if (!high_lux) {
+        display.setCursor(90,20);
+        display.setTextSize(1);
+        // display.setTextColor(WHITE);
+        display.print("autoON");
+    } else if (high_lux){
+        display.setCursor(86,20);
+        display.setTextSize(1);
+        display.print("");
     }
     display2.display();
 
@@ -727,6 +740,16 @@ void callback(char* topic, byte* payload, unsigned int length) {
         // String msgStringtemp = String(message_buff);
     }
 
+    if (strTopic == "sensor/lux") {
+        for(i=0; i<length; i++) {
+            message_buff_lux[i] = payload[i];
+        }
+        message_buff_lux[i] = '\0';
+        String buff_lux = String(message_buff_lux);
+        lux  =atoi( buff_lux.c_str() ) ;
+        // String msgStringtemp = String(message_buff);
+    }
+
     if (strTopic == "sensor/danger") {
         for(i=0; i<length; i++) {
             message_buff_danger[i] = payload[i];
@@ -786,6 +809,29 @@ void loop() {
    counter();
    }
 
-    client.loop();
+   client.loop();
+
+   if (lux < 240 ) {
+       high_lux = false;
+   } else {
+       high_lux = true;
+   }
+
+   now_PIR = millis();
+   if (now_PIR - time_PIR > 150000) {   // do not flood if somebody is detected , wait 2.30 minutes
+       if (digitalRead(5) == HIGH) {
+           now_PIR = millis();
+           client.publish("ESP/all_switches", "ON");
+           delay(800);
+           display_msg(message_buff_pressure, message_buff_temp, message_buff_temp_int, message_buff_icone, message_buff_danger) ;
+           time_PIR = now_PIR ;
+       }
+   }
+
+    if (digitalRead(13) == LOW ){
+        client.publish("ESP/all_switches", "OFF");
+        delay(800);
+    }
+
 
 }
