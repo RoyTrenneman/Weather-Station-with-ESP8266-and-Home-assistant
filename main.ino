@@ -8,6 +8,7 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Fonts/Org_01.h>
 
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
@@ -18,16 +19,17 @@ Adafruit_SSD1306 display2(OLED_RESET);
 #define YPOS 1
 #define DELTAY 2
 
+//SSD1306_128_64
 int lux = 1000 ;
 bool high_lux = false ;
 
 bool debug = false;
-const char* ssid = "***************";
-const char* password =  "**************";
+const char* ssid = "xxxxx";
+const char* password =  "xxxxxxx";
 const char* mqttServer = "192.168.1.18";
 const int mqttPort = 1883;
-const char* mqttUser = "";
-const char* mqttPassword = "";
+const char* mqttUser = "user";
+const char* mqttPassword = "xxxxx!!";
 char message_buff_temp[100] ;
 char message_buff_temp_int[100];
 char message_buff_pressure[100];
@@ -38,10 +40,11 @@ char message_buff_lux[10] ;
 unsigned long time;
 unsigned long next_time;
 unsigned long now;
-unsigned long time_PIR;
-unsigned long now_PIR;
+unsigned long time_data;
+unsigned long time_alive;
+unsigned long now_data;
 
-bool monitor = true ;
+bool data_received = true ;
 float temp ;
 float humi ;
 float float_actual_pressure;
@@ -49,8 +52,19 @@ float float_old_pressure ;
 int t;
 bool first_mesure = true;
 String image_trend ;
-WiFiClient espClient;
-PubSubClient client(espClient);
+
+static const unsigned char PROGMEM moon [] =
+{
+// 'moon , 32x32px
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x00,
+0x00, 0x3c, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x00, 0x7c, 0x00, 0x00, 0x00, 0x7e, 0x00, 0x00,
+0x00, 0x7e, 0x00, 0x00, 0x00, 0x7f, 0x00, 0x00, 0x00, 0x3f, 0x80, 0x00, 0x00, 0x3f, 0xe0, 0x00,
+0x00, 0x1f, 0xfc, 0x00, 0x00, 0x0f, 0xf8, 0x00, 0x00, 0x07, 0xf0, 0x00, 0x00, 0x01, 0x80, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
 
 static const unsigned char PROGMEM danger [] =
 {
@@ -156,6 +170,7 @@ static const unsigned char PROGMEM unknown [] =
 static const unsigned char PROGMEM partysunnyrainy [] =
 {
     // 'HA= 5 || 40 || 41'
+    // 'test'
    0x07, 0x00, 0x00, 0x03, 0x80, 0x00, 0x07, 0x80, 0x00, 0x07, 0x80, 0x00, 0x03, 0xc0, 0x00, 0x07,
    0x00, 0x00, 0x01, 0xc0, 0x7c, 0x06, 0x00, 0x00, 0x00, 0x03, 0xff, 0x00, 0x00, 0x00, 0x00, 0x07,
    0xff, 0xc0, 0x00, 0x00, 0x00, 0x0f, 0x83, 0xe0, 0x00, 0x00, 0x00, 0x1e, 0x00, 0xf0, 0x00, 0x00,
@@ -478,363 +493,365 @@ static const unsigned char PROGMEM cloudy [] =
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+WiFiClient espClient;
+PubSubClient client(espClient);
+
 void setup() {
+  // Initializing pin
+  Serial.begin(115200);
+  pinMode(5, INPUT);
+  pinMode(13, INPUT_PULLUP);
+  // Starting Display
+  Wire.begin(2,14);
+  // initialize with the I2C addr 0x3C (for the 128x32)
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  // initialize with the I2C addr 0x3D (for the 128x32)
+  display2.begin(SSD1306_SWITCHCAPVCC, 0x3D);
+  display.display();
+  display2.display();
+  delay(1000);
+  display.clearDisplay();
+  display2.clearDisplay();
+  display.setCursor(0,0);
+  display2.setCursor(0,0);
+  display.setTextSize(1);
+  display2.setTextSize(1);
+  display.setTextColor(WHITE);
+  display2.setTextColor(WHITE);
+  delay(500);
+  display.println("Attempting ");
+  display.println("wifi connection...");
+  display.display();
 
-    Serial.begin(115200);
-    pinMode(5, INPUT);
-    pinMode(13, INPUT_PULLUP);
-    //Starting Display
-    Wire.begin(2,14);
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // initialize with the I2C addr 0x3C (for the 128x32)
-    display2.begin(SSD1306_SWITCHCAPVCC, 0x3D); // initialize with the I2C addr 0x3D (for the 128x32)
-    display.display();
-    display2.display();
+  // Starting Wifi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
 
-    delay(1000);
-    display.clearDisplay();
-    display2.clearDisplay();
-    display.setCursor(0,0);
-    display2.setCursor(0,0);
-    display.setTextSize(1);
-    display2.setTextSize(1);
-    display.setTextColor(WHITE);
-    display2.setTextColor(WHITE);
-    delay(500);
-    display.println("Attempting ");
-    display.println("wifi connection...");
-    display.display();
-
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        if (debug) Serial.println("Connecting to WiFi..");
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+    //  if (debug) Serial.println("Connecting to WiFi..");
     }
-    if (debug) Serial.println("Connected to the WiFi network");
 
-    display.clearDisplay();
-    delay(500);
-    display.println("Wifi connected on");
-    display.println(String (ssid));
-    display.print("IP: ");
-    display.println(WiFi.localIP());
-    display.print("awaiting data...");
-    display.display();
-    delay(2000);
+  //if (debug) Serial.println("Connected to the WiFi network");
 
-    client.setServer(mqttServer, mqttPort);
-    client.setCallback(callback);
-    client.subscribe("sensor/#");
+  display.clearDisplay();
+  delay(500);
+  display.println("Wifi connected on");
+  display.println(String (ssid));
+  display.print("IP: ");
+  display.println(WiFi.localIP());
+  display.print("awaiting data...");
+  display.display();
+  delay(2000);
 
-    next_time = millis();
+  // Initiate next_time
+  next_time = millis();
 
-    ///////////////////////////**********OTA Upgrade**********////////////////////
-    ArduinoOTA.onStart([]() {
-        //
-        Serial.println("Start");
+  ///////////////////////////**********OTA Upgrade**********////////////////////
+  ArduinoOTA.onStart([]() {
+      if (debug)   display2.println("Start");
     });
-    ArduinoOTA.onEnd([]() {
-        Serial.println("\nEnd");
+  ArduinoOTA.onEnd([]() {
+      if (debug)   display2.println("\nEnd");
     });
-    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+      if (debug)   Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
     });
-    ArduinoOTA.onError([](ota_error_t error) {
+  ArduinoOTA.onError([](ota_error_t error) {
+    if (debug){
         Serial.printf("Error[%u]: ", error);
-        if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-        else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-        else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-        else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-        else if (error == OTA_END_ERROR) Serial.println("End Failed");
-        ESP.restart();
-    });
-    ArduinoOTA.begin();
-    /////////////////////////////////////////////////////////////////////////////
+        if (error == OTA_AUTH_ERROR) display2.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR) display2.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR) display2.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR) display2.println("Receive Failed");
+        else if (error == OTA_END_ERROR) display2.println("End Failed");
+        display2.display();
+      }
+    ESP.restart();
+  });
+  ArduinoOTA.begin();
+  /////////////////////////////////////////////////////////////////////////////
 
+  // Starting MQTT
+  client.setServer(mqttServer, mqttPort);
+  client.setCallback(callback);
+  client.subscribe("sensor/#");
 }
 
 void reconnect() {
-    int a = 1 ;
-    //loop until connected
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        while (!client.connected()) {
-            yield();
-            if (debug) Serial.print("MQTT attempting connection...");
-            if (client.connect("ESP8266Client", mqttUser, mqttPassword))
-            {
-                if (debug)  Serial.println("OK");
-                client.subscribe("sensor/#");
-
+  yield();
+  int a = 1 ;
+  //loop until connected
+  if (WiFi.status() == WL_CONNECTED) {
+      while (!client.connected()) {
+          yield();
+          if (debug){
+              display2.clearDisplay();
+              display2.setTextSize(1);
+              display2.setCursor(0,0);
+              display2.println("MQTT attempting re-connection...");
+              display2.display();
+            }
+          if (client.connect("ESP8266Client", mqttUser, mqttPassword)) {
+              client.subscribe("sensor/#");
+              if (debug){
+                  display2.clearDisplay();
+                  display2.setTextSize(1);
+                  display2.setCursor(0,0);
+                  display2.println("MQTT connected...");
+                  display2.display();
+                }
             } else {
-                if (debug) Serial.print("KO, error : ");
-                if (debug) Serial.print(client.state());
-                if (debug) Serial.println(" delay 5 s before trying to reconnect");
-                delay(5000);
+              if (debug){
+                  display2.setCursor(0,0);
+                  display2.println("KO, error : ");
+                  display2.println(client.state());
+                  display2.println(" delay 5 s before trying to reconnect");
+                  display2.display();
+               }
+              delay(5000);
             }
             a++ ;
-            if (a > 5)
-            {
-                break ; // in order to avoid an infernal loop
+          if (a > 5){
+             break ; // in order to avoid an infernal loop
             }
         }
+    } else {
+      if (debug){
+      display2.clearDisplay();
+      display2.setTextSize(1);
+      display2.setCursor(0,0);
+      display2.println("Wifi lost...");
+      }
     }
 }
+
 
 void display_msg(char* msg1, char* msg2, char* msg3, char* msg4, char*msg5) {
-    yield();
-    delay(800);
-    //Display2 image
-    display2.clearDisplay();
-    String msg_icone = String(msg4);
+  yield();
+  delay(800);
 
-    if (msg_icone == "4" || (msg_icone == "15"))
-    {
-        display2.drawBitmap(-5, -14 ,cloudy , 96, 96 , 1);
+  //Display2
+  if (!debug) {
+     display2.clearDisplay();
+  String msg_icone = String(msg4);
+  if (msg_icone == "4" || (msg_icone == "15")) {
+      display2.drawBitmap(-5, -14 ,cloudy , 96, 96 , 1);
 
-    } else if (msg_icone == "1")
-    {
-        display2.drawBitmap(-5, -13 ,sunny , 96, 96 , 1);
+    } else if (msg_icone == "1") {
+      display2.drawBitmap(-5, -13 ,sunny , 96, 96 , 1);
 
-    } else if ((msg_icone == "49") || (msg_icone == "50") || (msg_icone == "13") || (msg_icone == "12"))
-    {
-        display2.drawBitmap(15, 30 ,snow , 32, 32 , 1);
+    } else if ((msg_icone == "49") || (msg_icone == "50") || (msg_icone == "13") || (msg_icone == "12")) {
+      display2.drawBitmap(15, 30 ,snow , 32, 32 , 1);
 
-    } else if ((msg_icone =="3") || (msg_icone =="2"))
-    {
-        display2.drawBitmap(-5, -15 ,partysunny , 96, 96 , 1);
+    } else if ((msg_icone =="3") || (msg_icone =="2"))  {
+      display2.drawBitmap(0, -15 ,partysunny , 96, 96 , 1);
 
-    } else if ((msg_icone =="9") || (msg_icone == "46") || (msg_icone =="10"))
-    {
-        display2.drawBitmap(-5, -8 ,rainy , 96, 96 , 1);
+    } else if ((msg_icone =="9") || (msg_icone == "46") || (msg_icone =="10")) {
+      display2.drawBitmap(-5, -8 ,rainy , 96, 96 , 1);
 
-    } else if ((msg_icone =="5") || (msg_icone == "40") || (msg_icone =="41"))
-    {
-        display2.drawBitmap(5, 10 ,partysunnyrainy , 48, 48 , 1);
+    } else if ((msg_icone =="5") || (msg_icone == "40") || (msg_icone =="41")) {
+      display2.drawBitmap(10, 10 ,partysunnyrainy , 48, 48 , 1);
 
     } else {
-        display2.drawBitmap(0, 30 ,unknown , 32, 32 , 1);
+      display2.drawBitmap(0, 30 ,unknown , 32, 32 , 1);
     };
 
-    if (monitor)
-    {
-        display2.drawBitmap(100, 0 ,wifi_icone, 24, 24, 1);
+  String msg_danger = String(msg5);
+  if (msg_danger != "0" ){
+      display2.drawBitmap(90, 35 ,danger , 32, 32 , 1);
     }
-    String msg_danger = String(msg5);
-    if (msg_danger != "0" ){
-        display2.drawBitmap(90, 35 ,danger , 32, 32 , 1);
+  if (image_trend == "up"){
+      display2.drawBitmap(-8, -4 ,arrowup, 32, 32 , 1);
     }
-    if (image_trend == "up")
-    {
-        display.drawBitmap(-12, -4 ,arrowup, 32, 32 , 1);
+  if (image_trend == "down"){
+      display2.drawBitmap(-12, -4 ,arrowdown, 32, 32 , 1);
     }
-    if (image_trend == "down")
-    {
-        display.drawBitmap(-12, -4 ,arrowdown, 32, 32 , 1);
+  if (image_trend == "none"){
+      display2.drawBitmap(-12, -4 ,arrow, 32, 32 , 1);
     }
-    if (image_trend == "none")
-    {
-        display.drawBitmap(-12, -4 ,arrow, 32, 32 , 1);
+  if (!high_lux) {
+      display2.drawBitmap(80, -4 ,moon, 32, 32 , 1);
     }
-    if (!high_lux)
-    {
-        display.setCursor(90,20);
-        display.setTextSize(1);
-        display.print("autoON");
-    } else if (high_lux){
-        display.setCursor(86,20);
-        display.setTextSize(1);
-        display.print("");
-    }
-    display2.display();
 
-    //Display1
-    delay(800);
-    display.clearDisplay();
-    display.setTextSize(2);
-    //display msg1
-    String msgString_pressure = String(msg1);
-    display.setCursor(0,0);
-    display.setTextColor(WHITE);
-    display.print(msgString_pressure);
-    display.println(" hPa");
-    //Display msg2
-    delay(800);
-    String msgString_temp = String(msg2);
-    display.setCursor(0,20);
-    display.setTextColor(WHITE);
-    display.print("Ext: ");
-    display.print(msgString_temp);
-    //Display msg3
-    delay(800);
-    String msgString_temp_int = String(msg3);
-    display.setCursor(0,40);
-    display.print("Int: ");
-    display.print(msgString_temp_int);
-    delay(800);
-    display.display();
+  if (data_received) {
+      display2.drawBitmap(100, 0 ,wifi_icone, 24, 24, 1);
+    }
+  display2.display();
+
+ }
+
+  //Display1
+  delay(800);
+  display.clearDisplay();
+  display.setTextSize(2);
+  //display pressure
+  String msgString_pressure = String(msg1);
+  display.setCursor(0,0);
+  display.setTextColor(WHITE);
+  display.print(msgString_pressure);
+  display.println(" hPa");
+  //Display temp_ext
+  delay(800);
+  String msgString_temp = String(msg2);
+  display.setCursor(0,20);
+  display.setTextColor(WHITE);
+  display.print("Ext: ");
+  display.print(msgString_temp);
+  //Display temp_int
+  delay(800);
+  String msgString_temp_int = String(msg3);
+  display.setCursor(0,40);
+  display.print("Int: ");
+  display.print(msgString_temp_int);
+  delay(800);
+  display.display();
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
+void callback(char* topic, byte* payload, int length) {
 
-    yield();
-    monitor = true;
-    next_time = millis();
-    String strTopic = String((char*)topic);
-    int i = 0;
+  yield();
+  String strTopic = String((char*)topic);
+  int i = 0;
+  data_received = true;
+  next_time = millis();
 
-    if (debug)
-    {
-        Serial.print("Message arrived in topic: ");
-        Serial.println(topic);
-        Serial.print("Message:");
-        for (int i = 0; i < length; i++) {
-            Serial.print((char)payload[i]);
+  if (strTopic == "sensor/pressure") {
+      for(i=0; i<length; i++) {
+          message_buff_pressure[i] = payload[i];
         }
-        Serial.println();
-        Serial.println("-----------------------");
+      message_buff_pressure[i] = '\0';
+
+      //tendance
+      String msgString = String(message_buff_pressure);
+      float_actual_pressure = msgString.toFloat();
+      if (first_mesure){
+          float_old_pressure = float_actual_pressure ;
+          first_mesure = false;
+        }
+      trend();
     }
 
-    if (strTopic == "sensor/pressure")
-    {
-        for(i=0; i<length; i++) {
-            message_buff_pressure[i] = payload[i];
+  if (strTopic == "sensor/temp") {
+      for(i=0; i<length; i++) {
+          message_buff_temp[i] = payload[i];
         }
-        message_buff_pressure[i] = '\0';
-
-        //tendance
-        String msgString = String(message_buff_pressure);
-        float_actual_pressure = msgString.toFloat();
-        if (first_mesure)
-        {
-            float_old_pressure = float_actual_pressure ;
-            first_mesure = false;
+      message_buff_temp[i] = '\0';
+    }
+  if (strTopic == "sensor/temp_int") {
+      for(i=0; i<length; i++) {
+          message_buff_temp_int[i] = payload[i];
         }
-        trend();
+      message_buff_temp_int[i] = '\0';
     }
 
-    if (strTopic == "sensor/temp")
-    {
-        for(i=0; i<length; i++) {
-            message_buff_temp[i] = payload[i];
+  if (strTopic == "sensor/icone") {
+      for(i=0; i<length; i++) {
+          message_buff_icone[i] = payload[i];
         }
-        message_buff_temp[i] = '\0';
-
+      message_buff_icone[i] = '\0';
     }
 
-    if (strTopic == "sensor/temp_int")
-    {
-        for(i=0; i<length; i++) {
-            message_buff_temp_int[i] = payload[i];
+  if (strTopic == "sensor/lux") {
+      for(i=0; i<length; i++) {
+          message_buff_lux[i] = payload[i];
         }
-        message_buff_temp_int[i] = '\0';
+      message_buff_lux[i] = '\0';
+      String buff_lux = String(message_buff_lux);
+      lux  =atoi( buff_lux.c_str() ) ;
     }
 
-    if (strTopic == "sensor/icone")
-    {
-        for(i=0; i<length; i++) {
-            message_buff_icone[i] = payload[i];
+  if (strTopic == "sensor/danger") {
+      for(i=0; i<length; i++) {
+          message_buff_danger[i] = payload[i];
         }
-        message_buff_icone[i] = '\0';
-    }
+      message_buff_danger[i] = '\0';
 
-    if (strTopic == "sensor/lux")
-    {
-        for(i=0; i<length; i++) {
-            message_buff_lux[i] = payload[i];
-        }
-        message_buff_lux[i] = '\0';
-        String buff_lux = String(message_buff_lux);
-        lux  =atoi( buff_lux.c_str() ) ;
     }
-
-    if (strTopic == "sensor/danger")
-    {
-        for(i=0; i<length; i++) {
-            message_buff_danger[i] = payload[i];
-        }
-        message_buff_danger[i] = '\0';
-     }
-    display_msg(message_buff_pressure, message_buff_temp, message_buff_temp_int, message_buff_icone, message_buff_danger) ;
+  display_msg(message_buff_pressure, message_buff_temp, message_buff_temp_int, message_buff_icone, message_buff_danger) ;
 }
+
 
 void counter() {
-    //if non data received under 5 minutes, clear icone
-    now = millis();
-    time =  now - next_time ;
-    if (time >= 300000)
-    {
-        monitor = false ;
-        delay(500);
-        display_msg(message_buff_pressure, message_buff_temp, message_buff_temp_int, message_buff_icone, message_buff_danger) ;
+  //if non data received after 5 minutes then clear wifi icone
+  now = millis();
+  time =  now - next_time ;
+  if (time >= 300000){
+      data_received = false ;
+      delay(500);
+      display_msg(message_buff_pressure, message_buff_temp, message_buff_temp_int, message_buff_icone, message_buff_danger) ;
     }
 }
 
 void trend (){
-    t++ ;
-    if (t > 5)
-    {
-        float dif = float_old_pressure - float_actual_pressure ;
-        if ( (dif > 0.5 ) || (dif < -0.5) )
-        {
-            if (float_old_pressure > float_actual_pressure)
-            {
-                image_trend = "down" ;
+  t++ ;
+  if (t > 5) {
+      float dif = float_old_pressure - float_actual_pressure ;
+      if ( (dif > 0.5 ) || (dif < -0.5) ) {
+          if (float_old_pressure > float_actual_pressure) {
+              image_trend = "down" ;
             } else {
-                image_trend = "up" ;
+              image_trend = "up" ;
             }
-            float_old_pressure = float_actual_pressure ;
-            t = -5 ;
+          float_old_pressure = float_actual_pressure ;
+          t = -5 ;
         } else {
-            image_trend = "none" ;
-            float_old_pressure = float_actual_pressure ;
-            t = 0 ;
+          image_trend = "none" ;
+          float_old_pressure = float_actual_pressure ;
+          t = 0 ;
         }
     }
 }
 
+
 void loop() {
 
-    ///////********OTA Upgrade*********/////////////////
-    ArduinoOTA.handle();
-    ////////////////////////////////////////////////////
 
-    if (!client.connected())
-    {
-        reconnect();
+  ///////********OTA Upgrade*********/////////////////
+  ArduinoOTA.handle();
+  ////////////////////////////////////////////////////
+
+  if (!client.connected()) {
+      reconnect();
     }
 
-   if (monitor)
-   {
-       counter();
-   }
+  if (data_received){
+      counter();
+    }
 
-   client.loop();
+  client.loop();
+  now_data = millis();
 
-   if (lux < 240 )
-   {
-       high_lux = false;
-   } else {
-       high_lux = true;
-   }
+  if (lux < 400 ) {
+      high_lux = false;
+    } else {
+      high_lux = true;
+    }
 
-   now_PIR = millis();
-   if (now_PIR - time_PIR > 150000)
-   {   // do not flood if somebody is detected , wait 2.30 minutes
-       if (digitalRead(5) == HIGH)
-       {
-           now_PIR = millis();
-           client.publish("ESP/all_switches", "ON");
-           delay(800);
-           display_msg(message_buff_pressure, message_buff_temp, message_buff_temp_int, message_buff_icone, message_buff_danger) ;
-           time_PIR = now_PIR ;
-       }
-   }
+  if (now_data - time_alive > 60000) {
+        client.publish("ESP/alive", "ON");
+        time_alive = millis();
+      }
 
-   if (digitalRead(13) == LOW )
-   {
-       client.publish("ESP/all_switches", "OFF");
-       delay(800);
-   }
+  if (data_received) {
+      if (now_data - time_data > 150000) {   // do not flood if somebody is detected , wait 2.30 minutes
+          if ((digitalRead(5) == HIGH) && (!high_lux)) {
+              now_data = millis();
+              client.publish("ESP/all_switches", "ON");
+              delay(800);
+              time_data = now_data ;
+            }
+          if (lux > 1300)
+            {
+              now_data = millis();
+              client.publish("ESP/all_switches", "OFF");
+              time_data = now_data ;
+            }
+        }
+
+      if (digitalRead(13) == LOW ){
+          client.publish("ESP/all_switches", "OFF");
+          delay(800);
+        }
+  }
 }
