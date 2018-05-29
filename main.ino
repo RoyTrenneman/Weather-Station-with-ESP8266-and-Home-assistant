@@ -828,13 +828,17 @@ void loop() {
       high_lux = true;
     }
 
+  /*
+   This topic is handled by the python script Weather_Station_Monitor.py
+   */
   if (now_data - time_alive > 60000) {
         client.publish("ESP/alive", "ON");
         time_alive = millis();
       }
 
   if (data_received) {
-      if (now_data - time_data > 150000) {   // do not flood if somebody is detected , wait 2.30 minutes
+      // do not flood if motion sensor is triggered , wait 2.30 minutes
+      if (now_data - time_data > 150000) {
           if ((digitalRead(5) == HIGH) && (!high_lux)) {
               now_data = millis();
               client.publish("ESP/all_switches", "ON");
