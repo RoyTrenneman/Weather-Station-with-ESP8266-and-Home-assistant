@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/python
 
 from RPi_AS3935 import RPi_AS3935
 import time
