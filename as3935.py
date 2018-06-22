@@ -15,6 +15,7 @@ light = 0
 first = True
 pin = 24
 debug = False
+disturb = 0
 
 def on_connect(client, userdata, flags, rc):
   if debug:
@@ -28,11 +29,14 @@ def handle_interrupt(channel):
   global light
   global start_time
   global first
+  global disturb
   reason = sensor.get_interrupt()
   if reason == 0x01:
-    if debug:
+    disturb += 1
+    if debug and not disturb > 8:
       print ("Noise level too high  adjusting")
-    sensor.raise_noise_floor()
+    if not disturb > 8:
+      sensor.raise_noise_floor()
   elif reason == 0x04:
     if debug:
       print ("Disturber detected - masking")
